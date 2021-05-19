@@ -1,0 +1,7 @@
+/MyData
+/MyModels
+/MyReports
+.idea
+/src/.idea
+/src/__pycache__
+/src/.ipynb_checkpoints

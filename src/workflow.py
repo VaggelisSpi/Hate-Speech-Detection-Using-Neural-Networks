@@ -7,17 +7,12 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.11.2
+#       jupytext_version: 1.13.0
 #   kernelspec:
-#     display_name: ThesisEnv
+#     display_name: Python 3 (ipykernel)
 #     language: python
-#     name: thesisenv
+#     name: python3
 # ---
-
-from google.colab import drive
-drive.mount("/content/drive")
-
-# cd "/content/drive/My Drive/Thesis_Project/src"
 
 # !pip install emoji
 
@@ -106,37 +101,20 @@ test_classes = pd.Series(test_labels, dtype="category")
 le = LabelEncoder()
 test_categorical_classes = to_categorical(le.fit_transform(test_classes))
 
-# Initialize all the neccessary variables
+# Initialize all the necessary variables
 
 batch_size = 256
-layers = 1
+layers = 2
 go_backwards = True
 use_embeddings = False
 epochs = 20
-model_name = 'one_bi_glove_20ep_model'
+model_name = 'two_bi_glove_20ep_model'
 target_names = ['hate', 'neutral']
 num_classes = len(target_names)
-
-train_size = len(preprocessed_train_data['tweet'])
-test_size = len(preprocessed_test_data['tweet'])
-
-# Create two generators that will generate the training and the testing dataset respectively
-
-train_generator = gen.KerasBatchGenerator(preprocessed_train_data['tweet'], train_categorical_classes, train_size, batch_size, num_classes, vectorizer, vec_size)
-test_generator = gen.KerasBatchGenerator(preprocessed_test_data['tweet'], test_categorical_classes, test_size, batch_size, num_classes, vectorizer, vec_size)
 
 # Prepare the generators for the models with the embeddings layer and any other data that we will need
 
 # +
-import wordEmbeddingsGenerator as gen
-
-# Initialize the variables
-vec_size = 200
-batch_size = 256
-use_embeddings = True
-target_names = ['hate', 'neutral']
-num_classes = len(target_names)
-
 # Make the word to id dictionary
 train_whole_text = utils.make_whole_text(preprocessed_train_data["tweet"])
 test_whole_text = utils.make_whole_text(preprocessed_test_data["tweet"])
@@ -158,85 +136,24 @@ maxlen = max(lengths)
 train_generator = gen.wordEmbeddingsGenerator(preprocessed_train_data["tweet"],
                                               train_categorical_classes,
                                               len(preprocessed_train_data),
-                                              batch_size, 2, True, 
+                                              batch_size, 2, True,
                                               vocab_size=vocab_size,
                                               word_to_id=word_to_id,
                                               maxlen=maxlen)
 
 test_generator = gen.wordEmbeddingsGenerator(preprocessed_test_data["tweet"],
-                                              test_categorical_classes,
-                                              len(preprocessed_test_data),
-                                              batch_size, 2, True, 
-                                              vocab_size=vocab_size,
-                                              word_to_id=word_to_id,
-                                              maxlen=maxlen)
+                                             test_categorical_classes,
+                                             len(preprocessed_test_data),
+                                             batch_size, 2, True,
+                                             vocab_size=vocab_size,
+                                             word_to_id=word_to_id,
+                                             maxlen=maxlen)
+# -
+
+# Make the model, train and evaluate it
 
 # +
-epochs = 4
-layers = 2
-go_backwards = True
-model_name = 'two_bi_layer_15ep_model'
-model = my_models.make_model(layers=layers, go_backwards=go_backwards, use_embeddings=use_embeddings, 
-                             batch_size=batch_size, vec_size=vec_size, vocab_size=vocab_size, input_length=maxlen)
-model.load_weights('../MyModels/two_bi_layer_15ep_model-11.hdf5')
-
-x_train = preprocessed_train_data['tweet']
-y_train = train_categorical_classes
-
-x_test = preprocessed_test_data['tweet']
-y_test = test_categorical_classes
-
-
-train_size = len(x_train)
-test_size = len(x_test)
-
-print("Evaluating the model")
-result = model.evaluate(test_generator.generate(), steps=math.ceil(test_size / batch_size), batch_size=batch_size)
-
-# Because our test data set does not divide exactly the batch size we will
-# extend it with data from the beggining so it can fit exactly the batch
-# size. We do this in order to make predictions for all the data. We will 
-# then remove the extra data and make our reports with the initial test data
-test_data_tweets = []
-
-if use_embeddings:
-    for tweet in x_test:
-        test_data_tweets.append(rw.words_to_ids(tweet, word_to_id, maxlen))
-
-    for i in range(test_size, math.ceil(test_size / batch_size)*batch_size):
-        tweet = x_test.iloc[i - test_size]
-        test_data_tweets.append(rw.words_to_ids(tweet, word_to_id, maxlen))
-else:
-    max_len = len(x_test.iloc[-1])
-
-    for tweet in x_test:
-        test_data_tweets.append(vectorizer.vectorize(tweet, maxlen=max_len))
-
-    for i in range(test_size, math.ceil(test_size / batch_size)*batch_size):
-        tweet = x_test.iloc[i - test_size]
-        test_data_tweets.append(vectorizer.vectorize(tweet, maxlen=max_len))
-
-test_data_tweets = np.array(test_data_tweets)
-
-# Make the predictions
-print("Making the predictions")
-steps=math.ceil(test_size / batch_size)
-preds = model.predict(test_data_tweets, batch_size=batch_size, verbose=1, steps=steps)
-
-y_true = np.argmax(y_test[:test_size], axis=1)
-y_pred = np.argmax(preds[:test_size], axis=1)
-
-# Print the report
-print("Making the report")
-rw.print_report(result, y_true, y_pred, target_names, '../MyReports/' + model_name + '_report.txt')
-
-# +
-layers = 2
-epochs = 5
-go_backwards = False
-model_name = 'two_uni_layer_15ep_model'
-
-model = my_models.make_model(layers=layers, go_backwards=go_backwards, use_embeddings=use_embeddings, 
+model = my_models.make_model(layers=layers, go_backwards=go_backwards, use_embeddings=use_embeddings,
                              batch_size=batch_size, vec_size=vec_size, vocab_size=vocab_size, input_length=maxlen)
 model.load_weights('../MyModels/two_uni_layer_15ep_model-10.hdf5')
 
@@ -246,16 +163,11 @@ y_train = train_categorical_classes
 x_test = preprocessed_test_data['tweet']
 y_test = test_categorical_classes
 
-
-train_size = len(x_train)
-test_size = len(x_test)
-
-
 print("Evaluating the model")
 result = model.evaluate(test_generator.generate(), steps=math.ceil(test_size / batch_size), batch_size=batch_size)
 
 # Because our test data set does not divide exactly the batch size we will
-# extend it with data from the beggining so it can fit exactly the batch
+# extend it with data from the beginning so it can fit exactly the batch
 # size. We do this in order to make predictions for all the data. We will 
 # then remove the extra data and make our reports with the initial test data
 test_data_tweets = []
@@ -264,7 +176,7 @@ if use_embeddings:
     for tweet in x_test:
         test_data_tweets.append(rw.words_to_ids(tweet, word_to_id, maxlen))
 
-    for i in range(test_size, math.ceil(test_size / batch_size)*batch_size):
+    for i in range(test_size, math.ceil(test_size / batch_size) * batch_size):
         tweet = x_test.iloc[i - test_size]
         test_data_tweets.append(rw.words_to_ids(tweet, word_to_id, maxlen))
 else:
@@ -273,7 +185,7 @@ else:
     for tweet in x_test:
         test_data_tweets.append(vectorizer.vectorize(tweet, maxlen=max_len))
 
-    for i in range(test_size, math.ceil(test_size / batch_size)*batch_size):
+    for i in range(test_size, math.ceil(test_size / batch_size) * batch_size):
         tweet = x_test.iloc[i - test_size]
         test_data_tweets.append(vectorizer.vectorize(tweet, maxlen=max_len))
 
@@ -281,7 +193,7 @@ test_data_tweets = np.array(test_data_tweets)
 
 # Make the predictions
 print("Making the predictions")
-steps=math.ceil(test_size / batch_size)
+steps = math.ceil(test_size / batch_size)
 preds = model.predict(test_data_tweets, batch_size=batch_size, verbose=1, steps=steps)
 
 y_true = np.argmax(y_test[:test_size], axis=1)
